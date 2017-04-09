@@ -63,6 +63,7 @@ static void init_sched_queue(int queue_size)
 	pthread_mutex_init(&sched_queue.lock, NULL);
 
 	/* TODO: initialize the timer */
+        timer_create(CLOCK_REALTIME, NULL, &timer);
 }
 
 /*
@@ -75,7 +76,9 @@ static void resume_worker(thread_info_t *info)
 	/*
 	 * TODO: signal the worker thread that it can resume 
 	 */
-
+        kill(info->thrid, SIGALRM);
+        
+        
 	/* update the wait time for the thread */
 	update_wait_time(info);
 
@@ -86,6 +89,7 @@ void cancel_worker(thread_info_t *info)
 {
 
 	/* TODO: send a signal to the thread, telling it to kill itself*/
+        kill(info->thrid, SIGTERM);
 
 	/* Update global wait and run time info */
 	wait_times += info->wait_time;
@@ -110,20 +114,23 @@ void cancel_worker(thread_info_t *info)
 static void suspend_worker(thread_info_t *info)
 {
 
-        int whatgoeshere = 0;
+        int quanta = info->quanta;
 	printf("Scheduler: suspending %lu.\n", info->thrid);
 
 	/*update the run time for the thread*/
 	update_run_time(info);
 
 	/* TODO: Update quanta remaining. */
-
+        info->quanta = 0;
+        
 	/* TODO: decide whether to cancel or suspend thread */
-	if(whatgoeshere) {
-	  /*
-	   * Thread still running: suspend.
-	   * TODO: Signal the worker thread that it should suspend.
-	   */
+	if(quanta > 0) {
+            kill(info->thrid, SIGUSR1);
+            
+          /*
+	  * Thread still running: suspend.
+	  * TODO: Signal the worker thread that it should suspend.
+	  */
 
 	  /* Update Schedule queue */
 	  list_remove(&sched_queue,info->le);
@@ -182,13 +189,22 @@ void timer_handler()
  * TODO: Implement this function.
  */
 void setup_sig_handlers() {
-
-	/* Setup timer handler for SIGALRM signal in scheduler */
-
-	/* Setup cancel handler for SIGTERM signal in workers */
-
-	/* Setup suspend handler for SIGUSR1 signal in workers */
-
+    struct sigaction sa1, sa2, sa3;
+    
+    sa1.sa_handler = timer_handler;
+    sa2.sa_handler = cancel_thread;
+    sa3.sa_handler = suspend_thread;
+    
+    sigemptyset(&sa1.sa_mask);
+    sigemptyset(&sa2.sa_mask);
+    sigemptyset(&sa3.sa_mask);
+    
+    /* Setup timer handler for SIGALRM signal in scheduler */
+    sigaction(SIGALRM, &sa1, NULL);
+    /* Setup cancel handler for SIGTERM signal in workers */
+    sigaction(SIGTERM, &sa2, NULL);
+    /* Setup suspend handler for SIGUSR1 signal in workers */
+    sigaction(SIGUSR1, &sa3, NULL);
 }
 
 /*******************************************************************************
@@ -269,11 +285,18 @@ static void create_workers(int thread_count, int *quanta)
  * runs the scheduler.
  */
 static void *scheduler_run(void *unused)
-{
+{       struct itimerspec *its = NULL;
+        struct timespec arm, intrvl;
 	wait_for_queue();
 
+        arm.tv_sec = 1;
+        intrvl.tv_sec = QUANTUM;
+        
+        its->it_interval = intrvl;
+        its->it_value = arm;
+        
 	/* TODO: start the timer */
-
+        timer_settime(timer, 0, its, NULL);
 	/*keep the scheduler thread alive*/
 	while( !quit )
 		sched_yield();
