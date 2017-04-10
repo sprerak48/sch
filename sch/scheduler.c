@@ -83,6 +83,7 @@ static void resume_worker(thread_info_t *info)
 	/*
 	 * TODO: signal the worker thread that it can resume 
 	 */
+
         pthread_kill(info->thrid, SIGUSR2);
 
 	/* update the wait time for the thread */
@@ -119,7 +120,6 @@ void cancel_worker(thread_info_t *info)
  */
 static void suspend_worker(thread_info_t *info)
 {
-
         int quanta = info->quanta;
 	printf("Scheduler: suspending %lu.\n", info->thrid);
 
@@ -127,7 +127,7 @@ static void suspend_worker(thread_info_t *info)
 	update_run_time(info);
 
 	/* TODO: Update quanta remaining. */
-        //info->quanta = 0;
+        info->quanta--;
 
 	/* TODO: decide whether to cancel or suspend thread */
 	if(quanta > 0) {
@@ -287,6 +287,7 @@ static void create_workers(int thread_count, int *quanta)
 
 		/* TODO: initialize the time variables for each thread for performance evalution*/
                 clock_gettime(CLOCK_REALTIME, &info->resume_time);
+                clock_gettime(CLOCK_REALTIME, &info->suspend_time);
                 info->wait_time = 0;
                 info->run_time = 0;
 	}

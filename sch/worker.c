@@ -33,11 +33,9 @@ void suspend_thread()
 	sigset_t sset;
         sigemptyset(&sset);
         sigaddset(&sset, SIGUSR2);
-
-        pthread_sigmask(SIG_UNBLOCK, &sset, NULL);
         
-        int *ret = NULL;
-        sigwait(&sset, ret);
+        int ret = 0;
+        sigwait(&sset, &ret);
 
 	printf("Thread %lu: resuming.\n",(unsigned long) pthread_self());
 }
