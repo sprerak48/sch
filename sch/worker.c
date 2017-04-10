@@ -16,7 +16,7 @@
 /* Handler for SIGTERM signal */
 void cancel_thread()
 { 
-	printf("Thread %u: terminating.\n", (unsigned int)pthread_self());
+	printf("Thread %lu: terminating.\n", (unsigned long)pthread_self());
 
 	/* signal that done in queue */
 	sem_post(&queue_sem);
@@ -26,12 +26,20 @@ void cancel_thread()
 
 /* TODO: Handle the SIGUSR1 signal */
 void suspend_thread()
-{   
-	printf("Thread %u: suspending.\n", (unsigned int)pthread_self());
+{
+	printf("Thread %lu: suspending.\n", (unsigned long)pthread_self());
 
 	/*add your code here to wait for a resume signal from the scheduler*/
-	
-	printf("Thread %u: resuming.\n",(unsigned int) pthread_self());
+	sigset_t sset;
+        sigemptyset(&sset);
+        sigaddset(&sset, SIGUSR2);
+
+        //pthread_sigmask(SIG_UNBLOCK, &sset, NULL);
+        
+        int *ret = NULL;
+        if(sigwait(&sset, ret) > 0) {printf("wait fail\n");}
+
+	printf("Thread %lu: resuming.\n",(unsigned long) pthread_self());
 }
 
 /*******************************************************************************
@@ -82,14 +90,26 @@ void leave_scheduler_queue(thread_info_t *info)
  */
 void *start_worker(void *arg)
 {
+
 	thread_info_t *info = (thread_info_t *) arg;
 	float calc = 0.8;
 	int j = 0;
 
 	/* TODO: Block SIGALRM and SIGUSR2. */
-	 
+        
+        struct sigaction sa;
+        sigemptyset(&sa.sa_mask);
+        sigaddset(&sa.sa_mask, SIGALRM);
+        sigaddset(&sa.sa_mask, SIGUSR2);
+        
+        pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
+        
 	/* TODO: Unblock SIGUSR1 and SIGTERM. */
-
+        sigemptyset(&sa.sa_mask);
+        sigaddset(&sa.sa_mask, SIGUSR1);
+        sigaddset(&sa.sa_mask, SIGTERM);
+        
+        pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
 	/* compete with other threads to enter queue. */
 	if (enter_scheduler_queue(info)) {
