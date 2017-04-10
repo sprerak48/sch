@@ -84,7 +84,7 @@ static void resume_worker(thread_info_t *info)
 	 * TODO: signal the worker thread that it can resume 
 	 */
         pthread_kill(info->thrid, SIGUSR2);
-        
+
 	/* update the wait time for the thread */
 	update_wait_time(info);
 
